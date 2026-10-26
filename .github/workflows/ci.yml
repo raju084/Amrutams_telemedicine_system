@@ -218,6 +218,10 @@ jobs:
         env:
           KUBECONFIG_B64: ${{ secrets.STAGING_KUBECONFIG_B64 }}
         run: |
+          if [ -z "$KUBECONFIG_B64" ]; then
+            echo "⚠️ STAGING_KUBECONFIG_B64 secret is not configured. Skipping staging deployment."
+            exit 0
+          fi
           echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
           export KUBECONFIG=/tmp/kubeconfig
           # Update image tag in deployment
@@ -234,6 +238,10 @@ jobs:
         env:
           STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
         run: |
+          if [ -z "$STAGING_API_URL" ]; then
+            echo "⚠️ STAGING_API_URL secret is not configured. Skipping staging smoke tests."
+            exit 0
+          fi
           echo "Running smoke tests against staging..."
           curl -f "${STAGING_API_URL}/api/v1/health/" \
             --max-time 10 \
@@ -264,6 +272,10 @@ jobs:
         env:
           KUBECONFIG_B64: ${{ secrets.PROD_KUBECONFIG_B64 }}
         run: |
+          if [ -z "$KUBECONFIG_B64" ]; then
+            echo "⚠️ PROD_KUBECONFIG_B64 secret is not configured. Skipping production deployment."
+            exit 0
+          fi
           echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
           export KUBECONFIG=/tmp/kubeconfig
           IMAGE_TAG=git-$(echo "${{ github.sha }}" | head -c 7)
@@ -279,6 +291,10 @@ jobs:
         env:
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
         run: |
+          if [ -z "$PROD_API_URL" ]; then
+            echo "⚠️ PROD_API_URL secret is not configured. Skipping production health check."
+            exit 0
+          fi
           echo "Verifying production health..."
           curl -f "${PROD_API_URL}/api/v1/health/" \
             --max-time 10 \
