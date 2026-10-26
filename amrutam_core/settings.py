@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import logging
 from pathlib import Path
@@ -21,6 +22,13 @@ if not _secret_key and not _debug_mode:
     )
 SECRET_KEY = _secret_key or 'django-insecure-dev-only-key-not-for-production'
 DEBUG = _debug_mode
+
+# Detect test environment
+IS_TESTING = (
+    'pytest' in sys.modules
+    or any('pytest' in arg for arg in sys.argv)
+    or os.environ.get('TESTING', 'False').lower() in ('true', '1')
+)
 
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1' if not DEBUG else '*').split(',') if host.strip()]
 
@@ -232,9 +240,6 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
         'LOCATION': REDIS_URL,
         'TIMEOUT': int(os.environ.get('CACHE_TTL', '300')),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'redis.client.Redis',
-        }
     }
 }
 
@@ -264,6 +269,8 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 86400.0,
     },
 }
+CELERY_TASK_ALWAYS_EAGER = IS_TESTING
+CELERY_TASK_STORE_EAGER_RESULT = IS_TESTING
 
 # CORS Configuration
 CORS_ALLOW_ALL_ORIGINS = DEBUG
@@ -288,14 +295,18 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
-# HSTS (HTTP Strict Transport Security) — production only
-if not DEBUG:
+
+
+# HSTS (HTTP Strict Transport Security) — production only (not during testing or debug)
+if not DEBUG and not IS_TESTING:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True').lower() in ('true', '1')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+else:
+    SECURE_SSL_REDIRECT = False
 
 # PHI Encryption Key — must be set via environment in production
 _encryption_key = os.environ.get('DATA_ENCRYPTION_KEY')
