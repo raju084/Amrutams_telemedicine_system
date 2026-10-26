@@ -5,6 +5,7 @@ djangorestframework-simplejwt==5.3.1
 django-cors-headers==4.5.0
 django-filter==24.3
 drf-spectacular==0.27.2
+drf-spectacular-sidecar
 django-prometheus==2.3.1
 prometheus-client==0.21.0
 redis==5.1.1
