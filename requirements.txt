@@ -1,0 +1,30 @@
+# Amrutam Telemedicine Backend Dependencies
+Django==5.1.2
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.5.0
+django-filter==24.3
+drf-spectacular==0.27.2
+django-prometheus==2.3.1
+prometheus-client==0.21.0
+redis==5.1.1
+celery==5.4.0
+psycopg2-binary==2.9.10
+pyotp==2.9.0
+qrcode==7.4.2
+cryptography>=45.0.6
+python-dotenv==1.0.1
+gunicorn==23.0.0
+sendgrid==6.12.5
+
+# Testing & Code Quality
+pytest==8.3.3
+pytest-django==4.9.0
+pytest-cov==6.0.0
+pytest-mock==3.14.0
+factory-boy==3.3.1
+flake8==7.1.1
+black==24.10.0
+isort==5.13.2
+bandit==1.7.10
+safety==3.2.8

@@ -1,0 +1,183 @@
+version: '3.8'
+
+services:
+  # ==============================================================================
+  # Primary Database: PostgreSQL 16
+  # ==============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: amrutam_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-amrutam_db}
+      POSTGRES_USER: ${DB_USER:-amrutam_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-amrutam_secure_password_2026}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-amrutam_user} -d ${DB_NAME:-amrutam_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - amrutam_network
+
+  # ==============================================================================
+  # In-Memory Cache & Message Broker: Redis 7
+  # ==============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: amrutam_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - amrutam_network
+
+  # ==============================================================================
+  # Core API Service: Django Gunicorn
+  # ==============================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    container_name: amrutam_backend
+    restart: unless-stopped
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-amrutam-production-grade-super-strong-secret-key-change-in-prod!}
+      - ALLOWED_HOSTS=*
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=${DB_NAME:-amrutam_db}
+      - DB_USER=${DB_USER:-amrutam_user}
+      - DB_PASSWORD=${DB_PASSWORD:-amrutam_secure_password_2026}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY:-s8zP9kL0jXy3mQ1vT4wZ6aB8cE0gI2kM4oP6rS8uW0Y=}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - amrutam_network
+
+  # ==============================================================================
+  # Async Worker: Celery Worker
+  # ==============================================================================
+  celery_worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    container_name: amrutam_celery_worker
+    restart: unless-stopped
+    command: celery -A amrutam_core worker --loglevel=info --concurrency=4
+    environment:
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=${DB_NAME:-amrutam_db}
+      - DB_USER=${DB_USER:-amrutam_user}
+      - DB_PASSWORD=${DB_PASSWORD:-amrutam_secure_password_2026}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY:-s8zP9kL0jXy3mQ1vT4wZ6aB8cE0gI2kM4oP6rS8uW0Y=}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - amrutam_network
+
+  # ==============================================================================
+  # Cron Scheduler: Celery Beat (Periodic Slot Reaper & Analytics)
+  # ==============================================================================
+  celery_beat:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    container_name: amrutam_celery_beat
+    restart: unless-stopped
+    command: celery -A amrutam_core beat --loglevel=info
+    environment:
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=${DB_NAME:-amrutam_db}
+      - DB_USER=${DB_USER:-amrutam_user}
+      - DB_PASSWORD=${DB_PASSWORD:-amrutam_secure_password_2026}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY:-s8zP9kL0jXy3mQ1vT4wZ6aB8cE0gI2kM4oP6rS8uW0Y=}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - amrutam_network
+
+  # ==============================================================================
+  # Observability: Prometheus
+  # ==============================================================================
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: amrutam_prometheus
+    restart: unless-stopped
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - amrutam_network
+
+  # ==============================================================================
+  # Observability: Grafana
+  # ==============================================================================
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: amrutam_grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - amrutam_network
+
+networks:
+  amrutam_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

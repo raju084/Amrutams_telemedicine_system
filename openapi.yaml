@@ -1,0 +1,1936 @@
+openapi: 3.0.3
+info:
+  title: Amrutam Telemedicine API
+  version: 1.0.0
+  description: Production-grade RESTful API for Amrutam Telemedicine & Ayurvedic Healthcare
+    System. Supports end-to-end user lifecycle, high-concurrency doctor scheduling,
+    race-condition protected bookings, tamper-evident audit trails, digital prescriptions,
+    and admin analytics.
+paths:
+  /api/v1/analytics/overview/:
+    get:
+      operationId: analytics_overview_retrieve
+      description: |-
+        High-performance analytics endpoint for Amrutam hospital administrators.
+        Provides volume tracking (supporting 100k daily consultations target),
+        doctor utilization, and Ayurvedic specialization revenue metrics.
+      tags:
+      - Admin Analytics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAnalyticsResponse'
+          description: ''
+  /api/v1/audit/:
+    get:
+      operationId: audit_list
+      description: |-
+        List compliance audit trail with filtering by action, user, or date.
+        Restricted to Compliance Auditors and Admins.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Compliance & Audit Trails
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditLogList'
+          description: ''
+  /api/v1/audit/verify-chain/:
+    get:
+      operationId: audit_verify_chain_retrieve
+      description: |-
+        Cryptographic verification of audit log chain integrity.
+        Validates that no records have been altered, injected, or removed.
+      tags:
+      - Compliance & Audit Trails
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditChainVerifyResponse'
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: |-
+        Authenticates user with email and password.
+        Returns JWT tokens or temporary token if MFA challenge is required.
+      tags:
+      - Authentication & Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+          description: ''
+  /api/v1/auth/mfa/setup/:
+    post:
+      operationId: auth_mfa_setup_create
+      description: Generates TOTP secret and QR provisioning URI for Google Authenticator.
+      tags:
+      - Authentication & Users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFASetupResponse'
+          description: ''
+  /api/v1/auth/mfa/verify/:
+    post:
+      operationId: auth_mfa_verify_create
+      description: Verifies 6-digit TOTP token to complete MFA activation or MFA login.
+      tags:
+      - Authentication & Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFAVerifyResponse'
+          description: ''
+  /api/v1/auth/profile/:
+    get:
+      operationId: auth_profile_retrieve
+      description: Retrieve and update authenticated user details and profile.
+      tags:
+      - Authentication & Users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+          description: ''
+    patch:
+      operationId: auth_profile_partial_update
+      description: Retrieve and update authenticated user details and profile.
+      tags:
+      - Authentication & Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserDetailRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+          description: ''
+  /api/v1/auth/register/:
+    post:
+      operationId: auth_register_create
+      description: Register a new user (Patient, Doctor, Admin).
+      tags:
+      - Authentication & Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+          description: ''
+  /api/v1/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/consultations/:
+    get:
+      operationId: consultations_list
+      description: List consultations for the authenticated user (Patient sees theirs,
+        Doctor sees theirs, Admin sees all).
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Consultations Lifecycle
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedConsultationDetailList'
+          description: ''
+  /api/v1/consultations/{id}/:
+    get:
+      operationId: consultations_retrieve
+      description: Retrieve single consultation details.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Consultations Lifecycle
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsultationDetail'
+          description: ''
+  /api/v1/consultations/{id}/transition/:
+    post:
+      operationId: consultations_transition_create
+      description: |-
+        State machine transition handler:
+        - START: Doctor begins the live video call (transitions to IN_PROGRESS)
+        - COMPLETE: Doctor ends the consultation (transitions to COMPLETED)
+        - CANCEL: Patient or Doctor cancels (frees the slot)
+        - NO_SHOW: Doctor marks patient absent
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Consultations Lifecycle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultationStatusTransitionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsultationStatusTransitionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsultationStatusTransitionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsultationTransitionResponse'
+          description: ''
+  /api/v1/consultations/{id}/video-token/:
+    get:
+      operationId: consultations_video_token_retrieve
+      description: Returns WebRTC / Agora video credentials for the consultation room.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Consultations Lifecycle
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoTokenResponse'
+          description: ''
+  /api/v1/consultations/book/:
+    post:
+      operationId: consultations_book_create
+      description: |-
+        Reserve an availability slot and initiate a consultation booking.
+        Protected with Idempotency-Key support and concurrency locking.
+      tags:
+      - Consultations Lifecycle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultationCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsultationCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsultationCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsultationBookResponse'
+          description: ''
+  /api/v1/doctors/:
+    get:
+      operationId: doctors_list
+      description: Search and filter verified doctors by specialization, fee, experience,
+        rating, or date availability.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Doctors & Availability
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDoctorListList'
+          description: ''
+  /api/v1/doctors/{doctor_id}/slots/:
+    get:
+      operationId: doctors_slots_list
+      description: List available slots for a doctor on a specific date.
+      parameters:
+      - in: path
+        name: doctor_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Doctors & Availability
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAvailabilitySlotList'
+          description: ''
+  /api/v1/doctors/{id}/:
+    get:
+      operationId: doctors_retrieve
+      description: Retrieve public details of a specific doctor.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Doctors & Availability
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorDetail'
+          description: ''
+  /api/v1/doctors/slots/batch-create/:
+    post:
+      operationId: doctors_slots_batch_create_create
+      description: Allows an authenticated doctor to generate availability slots in
+        bulk.
+      tags:
+      - Doctors & Availability
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlotBatchCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SlotBatchCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SlotBatchCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchCreateSlotResponse'
+          description: ''
+  /api/v1/health/live/:
+    get:
+      operationId: health_live_retrieve
+      description: 'Kubernetes Liveness Probe: Returns HTTP 200 if process is running.'
+      tags:
+      - Health & Observability
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivenessResponse'
+          description: ''
+  /api/v1/health/ready/:
+    get:
+      operationId: health_ready_retrieve
+      description: 'Kubernetes Readiness Probe: Verifies live connectivity to PostgreSQL
+        and Redis.'
+      tags:
+      - Health & Observability
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+          description: ''
+  /api/v1/payments/{id}/:
+    get:
+      operationId: payments_retrieve
+      description: Retrieve payment status by consultation or payment ID.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Payments & Billing
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStatusResponse'
+          description: ''
+  /api/v1/payments/initiate/:
+    post:
+      operationId: payments_initiate_create
+      description: |-
+        Initiate checkout payment for a reserved consultation.
+        Requires or generates an Idempotency-Key.
+      tags:
+      - Payments & Billing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentInitiateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PaymentInitiateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PaymentInitiateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentInitiateResponse'
+          description: ''
+  /api/v1/payments/webhook/:
+    post:
+      operationId: payments_webhook_create
+      description: |-
+        Asynchronous payment webhook from Payment Gateway (e.g., Razorpay/Stripe).
+        Processed with strict idempotency and signature verification.
+      tags:
+      - Payments & Billing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentWebhookRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PaymentWebhookRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PaymentWebhookRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+          description: ''
+  /api/v1/prescriptions/:
+    post:
+      operationId: prescriptions_create
+      description: Allows the consulting doctor to create and cryptographically sign
+        a digital prescription.
+      tags:
+      - Prescriptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescriptionCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PrescriptionCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PrescriptionCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionCreatedResponse'
+          description: ''
+  /api/v1/prescriptions/{id}/:
+    get:
+      operationId: prescriptions_retrieve
+      description: Retrieve prescription by ID.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Prescriptions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionDetail'
+          description: ''
+  /api/v1/prescriptions/{id}/verify-signature/:
+    get:
+      operationId: prescriptions_verify_signature_retrieve
+      description: |-
+        Public / Pharmacy verification endpoint:
+        Verifies that the prescription was indeed signed by the licensed doctor and has not been altered.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Prescriptions
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionSignatureVerification'
+          description: ''
+components:
+  schemas:
+    ActionEnum:
+      enum:
+      - START
+      - COMPLETE
+      - CANCEL
+      - NO_SHOW
+      type: string
+      description: |-
+        * `START` - START
+        * `COMPLETE` - COMPLETE
+        * `CANCEL` - CANCEL
+        * `NO_SHOW` - NO_SHOW
+    AdminAnalyticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        timestamp:
+          type: string
+          format: date-time
+        consultations:
+          type: object
+          additionalProperties: {}
+        revenue:
+          type: object
+          additionalProperties: {}
+        doctor_utilization:
+          type: object
+          additionalProperties: {}
+        sla_observability:
+          type: object
+          additionalProperties: {}
+      required:
+      - consultations
+      - doctor_utilization
+      - revenue
+      - sla_observability
+      - success
+      - timestamp
+    AuditChainVerifyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        chain_integrity:
+          type: string
+        verified_records_count:
+          type: integer
+        tampered_records:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        compliance_standard:
+          type: string
+      required:
+      - chain_integrity
+      - compliance_standard
+      - success
+      - tampered_records
+      - verified_records_count
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+        user_email:
+          type: string
+          maxLength: 255
+        user_role:
+          type: string
+          maxLength: 50
+        action:
+          type: string
+          maxLength: 100
+        resource_type:
+          type: string
+          maxLength: 100
+        resource_id:
+          type: string
+          maxLength: 100
+        ip_address:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+          maxLength: 500
+        correlation_id:
+          type: string
+          maxLength: 100
+        payload_diff: {}
+        previous_log_hash:
+          type: string
+          maxLength: 64
+        log_hash:
+          type: string
+          readOnly: true
+      required:
+      - action
+      - id
+      - log_hash
+      - resource_id
+      - resource_type
+      - timestamp
+    AvailabilitySlot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        doctor_id:
+          type: string
+          format: uuid
+          readOnly: true
+        doctor_name:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AvailabilitySlotStatusEnum'
+          readOnly: true
+      required:
+      - date
+      - doctor_id
+      - doctor_name
+      - end_time
+      - id
+      - start_time
+      - status
+    AvailabilitySlotStatusEnum:
+      enum:
+      - AVAILABLE
+      - LOCKED
+      - BOOKED
+      type: string
+      description: |-
+        * `AVAILABLE` - Available
+        * `LOCKED` - Locked (In-Checkout)
+        * `BOOKED` - Booked
+    BatchCreateSlotResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        created_slots_count:
+          type: integer
+      required:
+      - created_slots_count
+      - message
+      - success
+    ConsultationBookResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        consultation:
+          $ref: '#/components/schemas/ConsultationDetail'
+      required:
+      - consultation
+      - message
+      - success
+    ConsultationCreateRequest:
+      type: object
+      properties:
+        slot_id:
+          type: string
+          format: uuid
+        chief_complaint:
+          type: string
+          minLength: 1
+          maxLength: 255
+        symptoms:
+          type: string
+          default: ''
+      required:
+      - chief_complaint
+      - slot_id
+    ConsultationDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        patient:
+          allOf:
+          - $ref: '#/components/schemas/UserDetail'
+          readOnly: true
+        doctor:
+          allOf:
+          - $ref: '#/components/schemas/DoctorList'
+          readOnly: true
+        slot:
+          allOf:
+          - $ref: '#/components/schemas/AvailabilitySlot'
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/ConsultationDetailStatusEnum'
+        chief_complaint:
+          type: string
+          maxLength: 255
+        symptoms:
+          type: string
+          readOnly: true
+        video_room_id:
+          type: string
+          nullable: true
+          maxLength: 128
+        cancellation_reason:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - chief_complaint
+      - created_at
+      - doctor
+      - id
+      - patient
+      - slot
+      - symptoms
+      - updated_at
+    ConsultationDetailStatusEnum:
+      enum:
+      - REQUESTED
+      - CONFIRMED
+      - IN_PROGRESS
+      - COMPLETED
+      - CANCELLED
+      - NO_SHOW
+      type: string
+      description: |-
+        * `REQUESTED` - Requested (Pending Payment)
+        * `CONFIRMED` - Confirmed & Scheduled
+        * `IN_PROGRESS` - In-Progress (Call Active)
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
+        * `NO_SHOW` - No Show
+    ConsultationStatusTransitionRequest:
+      type: object
+      properties:
+        action:
+          $ref: '#/components/schemas/ActionEnum'
+        reason:
+          type: string
+      required:
+      - action
+    ConsultationTransitionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        consultation:
+          $ref: '#/components/schemas/ConsultationDetail'
+      required:
+      - consultation
+      - message
+      - success
+    DoctorDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/UserDetail'
+          readOnly: true
+        license_number:
+          type: string
+          maxLength: 100
+        specialization:
+          $ref: '#/components/schemas/SpecializationEnum'
+        specialization_display:
+          type: string
+          readOnly: true
+        qualification:
+          type: string
+          description: e.g. BAMS, MD (Ayurveda)
+          maxLength: 200
+        experience_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        consultation_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        bio:
+          type: string
+        rating:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+        total_reviews:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_verified:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - license_number
+      - qualification
+      - specialization
+      - specialization_display
+      - user
+    DoctorList:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        doctor_name:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        specialization:
+          $ref: '#/components/schemas/SpecializationEnum'
+        qualification:
+          type: string
+          description: e.g. BAMS, MD (Ayurveda)
+          maxLength: 200
+        experience_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        consultation_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        rating:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+        total_reviews:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_verified:
+          type: boolean
+      required:
+      - doctor_name
+      - email
+      - id
+      - qualification
+      - specialization
+    FormEnum:
+      enum:
+      - CHURNA
+      - VATI
+      - ASAVA_ARISHTA
+      - TAILA
+      - GHRITA
+      - KASHAYA
+      - AVALEHA
+      - SYRUP
+      type: string
+      description: |-
+        * `CHURNA` - Churna (Powder)
+        * `VATI` - Vati / Gutika (Tablet)
+        * `ASAVA_ARISHTA` - Asava / Arishta (Fermented Liquid)
+        * `TAILA` - Taila (Medicated Oil)
+        * `GHRITA` - Ghrita (Medicated Ghee)
+        * `KASHAYA` - Kashaya (Decoction)
+        * `AVALEHA` - Avaleha (Herbal Paste/Jam)
+        * `SYRUP` - Syrup
+    LivenessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        uptime_seconds:
+          type: integer
+        environment:
+          type: string
+        version:
+          type: string
+      required:
+      - environment
+      - status
+      - uptime_seconds
+      - version
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        mfa_required:
+          type: boolean
+        tokens:
+          type: object
+          additionalProperties: {}
+        temp_token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserDetail'
+      required:
+      - mfa_required
+      - success
+    MFASetupResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        secret:
+          type: string
+        provisioning_uri:
+          type: string
+        instructions:
+          type: string
+      required:
+      - instructions
+      - provisioning_uri
+      - secret
+      - success
+    MFAVerifyRequest:
+      type: object
+      properties:
+        otp:
+          type: string
+          minLength: 6
+          maxLength: 6
+        temp_token:
+          type: string
+          minLength: 1
+      required:
+      - otp
+    MFAVerifyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        tokens:
+          type: object
+          additionalProperties: {}
+      required:
+      - message
+      - success
+    PaginatedAuditLogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+    PaginatedAvailabilitySlotList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailabilitySlot'
+    PaginatedConsultationDetailList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsultationDetail'
+    PaginatedDoctorListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoctorList'
+    PatchedUserDetailRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+    PatientProfile:
+      type: object
+      properties:
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        gender:
+          type: string
+          maxLength: 20
+        blood_group:
+          type: string
+          maxLength: 5
+        emergency_contact:
+          type: string
+          maxLength: 20
+        allergies:
+          type: string
+        chronic_conditions:
+          type: string
+        prakriti:
+          $ref: '#/components/schemas/PrakritiEnum'
+    PatientProfileRequest:
+      type: object
+      properties:
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        gender:
+          type: string
+          maxLength: 20
+        blood_group:
+          type: string
+          maxLength: 5
+        emergency_contact:
+          type: string
+          maxLength: 20
+        allergies:
+          type: string
+        chronic_conditions:
+          type: string
+        prakriti:
+          $ref: '#/components/schemas/PrakritiEnum'
+    PaymentDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        consultation_id:
+          type: string
+          format: uuid
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          maxLength: 10
+        status:
+          $ref: '#/components/schemas/PaymentDetailStatusEnum'
+        gateway_order_id:
+          type: string
+          maxLength: 100
+        gateway_payment_id:
+          type: string
+          maxLength: 100
+        idempotency_key:
+          type: string
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - consultation_id
+      - created_at
+      - id
+      - idempotency_key
+    PaymentDetailStatusEnum:
+      enum:
+      - PENDING
+      - SUCCESS
+      - FAILED
+      - REFUNDED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `SUCCESS` - Success
+        * `FAILED` - Failed
+        * `REFUNDED` - Refunded
+    PaymentInitiateRequest:
+      type: object
+      properties:
+        consultation_id:
+          type: string
+          format: uuid
+      required:
+      - consultation_id
+    PaymentInitiateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        payment:
+          $ref: '#/components/schemas/PaymentDetail'
+        gateway_checkout_data:
+          type: object
+          additionalProperties: {}
+      required:
+      - gateway_checkout_data
+      - message
+      - payment
+      - success
+    PaymentStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        payment:
+          $ref: '#/components/schemas/PaymentDetail'
+      required:
+      - payment
+      - success
+    PaymentWebhookRequest:
+      type: object
+      properties:
+        event:
+          type: string
+          minLength: 1
+        order_id:
+          type: string
+          minLength: 1
+        payment_id:
+          type: string
+          minLength: 1
+      required:
+      - event
+      - order_id
+      - payment_id
+    PrakritiEnum:
+      enum:
+      - VATA
+      - PITTA
+      - KAPHA
+      - VATA_PITTA
+      - PITTA_KAPHA
+      - VATA_KAPHA
+      - TRIDOSHA
+      - UNKNOWN
+      type: string
+      description: |-
+        * `VATA` - Vata
+        * `PITTA` - Pitta
+        * `KAPHA` - Kapha
+        * `VATA_PITTA` - Vata-Pitta
+        * `PITTA_KAPHA` - Pitta-Kapha
+        * `VATA_KAPHA` - Vata-Kapha
+        * `TRIDOSHA` - Tridoshic (Balanced)
+        * `UNKNOWN` - Not Assessed
+    PrescriptionCreateRequest:
+      type: object
+      properties:
+        consultation:
+          type: string
+          format: uuid
+        diagnosis:
+          type: string
+          minLength: 1
+          description: Clinical diagnosis and Ayurvedic Nidan
+        dietary_advice:
+          type: string
+          description: Pathya (recommended) & Apathya (prohibited) foods
+        lifestyle_recommendations:
+          type: string
+          description: Dinacharya & daily routines
+        follow_up_date:
+          type: string
+          format: date
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrescriptionItemRequest'
+      required:
+      - consultation
+      - diagnosis
+      - items
+    PrescriptionCreatedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        prescription:
+          $ref: '#/components/schemas/PrescriptionDetail'
+      required:
+      - message
+      - prescription
+      - success
+    PrescriptionDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        consultation_id:
+          type: string
+          format: uuid
+          readOnly: true
+        doctor_name:
+          type: string
+          readOnly: true
+        patient_name:
+          type: string
+          readOnly: true
+        diagnosis:
+          type: string
+          description: Clinical diagnosis and Ayurvedic Nidan
+        dietary_advice:
+          type: string
+          description: Pathya (recommended) & Apathya (prohibited) foods
+        lifestyle_recommendations:
+          type: string
+          description: Dinacharya & daily routines
+        follow_up_date:
+          type: string
+          format: date
+          nullable: true
+        digital_signature:
+          type: string
+          maxLength: 128
+        signature_timestamp:
+          type: string
+          format: date-time
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrescriptionItem'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - consultation_id
+      - created_at
+      - diagnosis
+      - doctor_name
+      - id
+      - items
+      - patient_name
+    PrescriptionItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        medicine_name:
+          type: string
+          description: e.g., Amrutam Brakey Hair Spa or Ashwagandha Churna
+          maxLength: 200
+        form:
+          $ref: '#/components/schemas/FormEnum'
+        dosage:
+          type: string
+          description: e.g. 5g or 1 tablet
+          maxLength: 100
+        frequency:
+          type: string
+          description: e.g. Twice a day
+          maxLength: 100
+        timing:
+          $ref: '#/components/schemas/TimingEnum'
+        anupana:
+          type: string
+          description: 'Vehicle: Warm water, Honey, Milk, Ghee'
+          maxLength: 100
+        duration_days:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        instructions:
+          type: string
+      required:
+      - dosage
+      - frequency
+      - id
+      - medicine_name
+    PrescriptionItemRequest:
+      type: object
+      properties:
+        medicine_name:
+          type: string
+          minLength: 1
+          description: e.g., Amrutam Brakey Hair Spa or Ashwagandha Churna
+          maxLength: 200
+        form:
+          $ref: '#/components/schemas/FormEnum'
+        dosage:
+          type: string
+          minLength: 1
+          description: e.g. 5g or 1 tablet
+          maxLength: 100
+        frequency:
+          type: string
+          minLength: 1
+          description: e.g. Twice a day
+          maxLength: 100
+        timing:
+          $ref: '#/components/schemas/TimingEnum'
+        anupana:
+          type: string
+          minLength: 1
+          description: 'Vehicle: Warm water, Honey, Milk, Ghee'
+          maxLength: 100
+        duration_days:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        instructions:
+          type: string
+      required:
+      - dosage
+      - frequency
+      - medicine_name
+    PrescriptionSignatureVerification:
+      type: object
+      properties:
+        success:
+          type: boolean
+        prescription_id:
+          type: string
+        doctor_name:
+          type: string
+        doctor_license:
+          type: string
+        signature_valid:
+          type: boolean
+        signed_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+      required:
+      - doctor_license
+      - doctor_name
+      - prescription_id
+      - signature_valid
+      - signed_at
+      - status
+      - success
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        dependencies:
+          type: object
+          additionalProperties: {}
+        timestamp:
+          type: number
+          format: double
+      required:
+      - dependencies
+      - status
+      - timestamp
+    RoleEnum:
+      enum:
+      - PATIENT
+      - DOCTOR
+      - ADMIN
+      - AUDITOR
+      type: string
+      description: |-
+        * `PATIENT` - Patient
+        * `DOCTOR` - Doctor
+        * `ADMIN` - Administrator
+        * `AUDITOR` - Auditor
+    SlotBatchCreateRequest:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        slot_duration_minutes:
+          type: integer
+          maximum: 120
+          minimum: 15
+          default: 30
+      required:
+      - date
+      - end_time
+      - start_time
+    SpecializationEnum:
+      enum:
+      - KAYACHIKITSA
+      - PANCHAKARMA
+      - NADI_PARIKSHA
+      - SHALYA_TANTRA
+      - PRASUTI_STRIROGA
+      - KAUMARABHRITYA
+      - SHALAKYA_TANTRA
+      - RASAYANA_VAJIKARANA
+      - DERMATOLOGY
+      type: string
+      description: |-
+        * `KAYACHIKITSA` - Kayachikitsa (Internal Medicine)
+        * `PANCHAKARMA` - Panchakarma (Detoxification & Purification)
+        * `NADI_PARIKSHA` - Nadi Pariksha (Pulse Diagnosis)
+        * `SHALYA_TANTRA` - Shalya Tantra (Ayurvedic Surgery & Wound Care)
+        * `PRASUTI_STRIROGA` - Prasuti & Striroga (Women Health & Fertility)
+        * `KAUMARABHRITYA` - Kaumarabhritya (Pediatrics)
+        * `SHALAKYA_TANTRA` - Shalakya Tantra (ENT & Ophthalmology)
+        * `RASAYANA_VAJIKARANA` - Rasayana & Vajikarana (Rejuvenation & Longevity)
+        * `DERMATOLOGY` - Ayurvedic Dermatology & Skin Care
+    TimingEnum:
+      enum:
+      - BEFORE_MEALS
+      - AFTER_MEALS
+      - WITH_MEALS
+      - BEDTIME
+      type: string
+      description: |-
+        * `BEFORE_MEALS` - Before Meals (Pragbhakta)
+        * `AFTER_MEALS` - After Meals (Adhobhakta)
+        * `WITH_MEALS` - With Meals (Sabhakta)
+        * `BEDTIME` - Bedtime (Nishi)
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    UserDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        is_verified:
+          type: boolean
+          readOnly: true
+        mfa_enabled:
+          type: boolean
+          readOnly: true
+        patient_profile:
+          allOf:
+          - $ref: '#/components/schemas/PatientProfile'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - email
+      - id
+      - is_verified
+      - mfa_enabled
+      - patient_profile
+      - role
+    UserRegistrationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          minLength: 10
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        profile:
+          $ref: '#/components/schemas/PatientProfileRequest'
+      required:
+      - email
+      - password
+    VideoTokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        room_id:
+          type: string
+        user_id:
+          type: string
+        role:
+          type: string
+        token:
+          type: string
+        expires_in_seconds:
+          type: integer
+      required:
+      - expires_in_seconds
+      - role
+      - room_id
+      - success
+      - token
+      - user_id
+    WebhookResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        payment_status:
+          type: string
+        message:
+          type: string
+      required:
+      - success
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
