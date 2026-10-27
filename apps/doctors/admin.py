@@ -18,3 +18,4 @@ class AvailabilitySlotAdmin(admin.ModelAdmin):
     list_display = ('doctor', 'date', 'start_time', 'end_time', 'status', 'locked_at')
     list_filter = ('status', 'date')
     search_fields = ('doctor__user__email',)
+    readonly_fields = ('lock_token', 'locked_at')
