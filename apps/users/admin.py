@@ -41,3 +41,8 @@ class UserAdmin(BaseUserAdmin):
 class PatientProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'date_of_birth', 'gender', 'blood_group', 'prakriti')
     search_fields = ('user__email', 'emergency_contact')
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'user':
+            kwargs['queryset'] = User.objects.filter(role=User.ROLE_PATIENT)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
